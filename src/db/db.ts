@@ -5,7 +5,7 @@ let db: any;
 
 export async function initDB() {
     const SQL = await initSqlJs({
-        locateFile: (file: string) => `/sql-wasm.wasm`,
+        locateFile: () => "/sql-wasm.wasm"
     });
     db = new SQL.Database();
     db.run(createTables);
