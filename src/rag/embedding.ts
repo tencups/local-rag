@@ -12,7 +12,7 @@ export async function extract(text: string): Promise<number[]> {
 
     // Get embeddings from the pipeline
     const embeddings = await extractor(text, { pooling: 'mean', normalize: true });
-    return embeddings.tolist();
+    return embeddings.tolist()[0];
 }
 
 
