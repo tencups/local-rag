@@ -1,27 +1,31 @@
 import { CreateMLCEngine, MLCEngine } from "@mlc-ai/web-llm";
 
-// Singleton to avoid reloading
-const engine: MLCEngine | null = null;
+// Mutable singleton
+let engine: MLCEngine | null = null;
 
-
-const initProgressCallback = (initProgress) => {
-    console.log(initProgress);
-}
-export async function initLLM() {
+export async function initLLM(config?: {
+    initProgressCallback?: (text: string) => void;
+}) {
     if (!engine) {
+        const selectedModel = "Llama-3-8B-Instruct-q4f32_1-MLC";
 
-        const selectedModel = "Llama-3.1-8B-Instruct-q4f32_1-MLC";
-
-        const engine = await CreateMLCEngine(
+        engine = await CreateMLCEngine(
             selectedModel,
-            { initProgressCallback: initProgressCallback }, // engineConfig
+            {
+                initProgressCallback: (status) => {
+                    console.log(status.text); // console log everything
+                    if (config?.initProgressCallback) {
+                        config.initProgressCallback(status.text); // forward only text
+                    }
+                },
+            },
         );
     }
     return engine;
 }
-
+// Generate a response from the local LLM
 export async function generateFromPrompt(prompt: string) {
-    if (!engine) throw new Error("LLM engine not initialized. Call initLocalLLM first.");
+    if (!engine) throw new Error("LLM engine not initialized. Call initLLM first.");
 
     const messages = [
         { role: "system", content: "You are a helpful AI assistant." },
@@ -30,6 +34,5 @@ export async function generateFromPrompt(prompt: string) {
 
     const reply = await engine.chat.completions.create({ messages });
 
-    // reply.choices[0].message contains the assistant's message
     return reply.choices[0].message.content;
 }

@@ -1,42 +1,60 @@
 import { useEffect, useState } from "react";
-import { initDB, insertDoc, getAllTexts } from "./db/db";
-import { extract } from "./rag/embedding";
+import { initLLM, generateFromPrompt } from "./llm//localLLM";
 
 export default function App() {
-  const [docs, setDocs] = useState<string[]>([]);
-  const [embeddings, setEmbeddings] = useState<number[][] | number[]>([]);
+  const [logMessages, setLogMessages] = useState<string[]>([]);
+  const [llmReady, setLLMReady] = useState(false);
+  const [input, setInput] = useState("");
+  const [reply, setReply] = useState("");
 
   useEffect(() => {
     (async () => {
-      await initDB();
-      insertDoc("Hello world");
-      insertDoc("This is a local RAG test");
-      const result = getAllTexts();
-      const docsFromDB = result[0]?.values || [];
-      // Extract the text strings from the rows
-      const texts = docsFromDB.map(row => row[0] as string);
-      setDocs(texts);
-      console.log("Query results:", result);
-
-      // Convert embeddings to array format
-      const embedResults = await extract(texts);
-      setEmbeddings(embedResults);
+      await initLLM({
+        initProgressCallback: (text) => {
+          // Save progress messages to state
+          setLogMessages((prev) => [...prev, text]);
+        },
+      });
+      setLLMReady(true);
     })();
   }, []);
 
+  const handleSubmit = async () => {
+    if (!llmReady) return;
+    const result = await generateFromPrompt(input);
+    setReply(result);
+  };
 
   return (
-    <div className="p-4">
-      <h1>SQLite WASM Test</h1>
-      <ul>
-        {docs.map(([id, text], idx) => (
-          <li key={id}>
-            {text}
-            <br />
-            Embedding (first 10 dims): {embeddings[idx]?.slice(0, 10).join(", ")}
-          </li>
-        ))}
-      </ul>
+    <div style={{ padding: "1rem", fontFamily: "monospace" }}>
+      {!llmReady ? (
+        <div>
+          <h2>Loading LLM...</h2>
+          <pre style={{ maxHeight: "300px", overflowY: "auto", background: "#111", color: "#0f0", padding: "0.5rem", borderRadius: "8px" }}>
+            {logMessages.map((msg, idx) => (
+              <div key={idx}>{msg}</div>
+            ))}
+          </pre>
+        </div>
+      ) : (
+        <div>
+          <h2>✅ Model Ready</h2>
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            rows={4}
+            style={{ width: "100%", marginBottom: "0.5rem" }}
+          />
+          <br />
+          <button onClick={handleSubmit}>Ask</button>
+          {reply && (
+            <div style={{ marginTop: "1rem", padding: "0.5rem", border: "1px solid #ccc" }}>
+              <strong>Reply:</strong>
+              <p>{reply}</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
