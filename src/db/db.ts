@@ -19,8 +19,16 @@ export function insertDoc(text: string) {
     stmt.free();
 }
 
-export function getAllDocs() {
-    return db.exec("SELECT * FROM docs");
+export async function getAllDocs(db: any) {
+    const result = await db.exec("SELECT id, text, embedding FROM docs");
+    if (!result[0]) return [];
+
+    const { values } = result[0];
+    return values.map(([id, text, blob]: [number, string, Uint8Array]) => ({
+        id,
+        text,
+        embedding: decodeEmbedding(blob),
+    }));
 }
 
 export function getAllTexts() {
